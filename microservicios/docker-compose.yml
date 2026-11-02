@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  usuarios:
+    build: ./usuarios
+    container_name: cosituc-usuarios
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+    networks:
+      - cosituc-net
+
+  boletos-db:
+    image: postgres:15
+    container_name: cosituc-boletos-db
+    environment:
+      - POSTGRES_USER=boletos_user
+      - POSTGRES_PASSWORD=boletos123
+      - POSTGRES_DB=boletos_db
+    ports:
+      - "5432:5432"
+    networks:
+      - cosituc-net
+
+  boletos:
+    build: ./boletos
+    container_name: cosituc-boletos
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - DB_HOST=boletos-db
+      - DB_PORT=5432
+      - DB_NAME=boletos_db
+      - DB_USER=boletos_user
+      - DB_PASSWORD=boletos123
+    depends_on:
+      - boletos-db
+    networks:
+      - cosituc-net
+
+  reservas:
+    build: ./reservas
+    container_name: cosituc-reservas
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - USUARIOS_API_URL=http://usuarios:3001
+      - BOLETOS_API_URL=http://boletos:3002
+    depends_on:
+      - usuarios
+      - boletos
+    networks:
+      - cosituc-net
+
+networks:
+  cosituc-net:
+    driver: bridge
