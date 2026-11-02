@@ -1,4 +1,4 @@
-# Proyecto COSITUC Microservicios - Cloud Computing (PA3)
+# Proyecto COSITUC Microservicios - Cloud Computing
 
 ## Integrantes
 * Alejandro Zavala, Rodrigo Josue
