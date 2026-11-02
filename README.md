@@ -5,3 +5,4 @@
 * Cortez Herrera, Sebastian Rodrigo
 * Cisneros Nieto, Sabrina Andrea
 * Cordova Alvarez, Gonzalo Sebastian
+* Ccoyo Huaman, Jhojan Edwin
