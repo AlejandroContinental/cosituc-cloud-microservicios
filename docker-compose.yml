@@ -1,0 +1,8 @@
+boletos-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: boletos_db
+      POSTGRES_USER: boletos_user
+      POSTGRES_PASSWORD: boletos123
+    ports:
+      - "5434:5432"
