@@ -37,13 +37,15 @@ app.get('/boletos/:id', async (req, res) => {
 // POST - Crear nuevo boleto
 app.post('/boletos', async (req, res) => {
     const { nombre, tipo, precio, stock } = req.body;
-    if (!nombre || !precio) {
-        return res.status(400).json({ error: 'Nombre y precio son obligatorios' });
+    
+    // Validación de presencia y tipo de datos
+    if (!nombre || precio === undefined || isNaN(Number(precio)) || (stock !== undefined && isNaN(Number(stock)))) {
+        return res.status(400).json({ error: 'Nombre, precio (numérico) y stock (numérico) son obligatorios o válidos' });
     }
     try {
         const result = await pool.query(
             'INSERT INTO boletos (nombre, tipo, precio, stock) VALUES ($1, $2, $3, $4) RETURNING *',
-            [nombre, tipo || 'Integral', precio, stock || 100]
+            [nombre, tipo || 'Integral', Number(precio), stock !== undefined ? Number(stock) : 100]
         );
         res.status(201).json(result.rows[0]);
     } catch (error) {
@@ -55,13 +57,15 @@ app.post('/boletos', async (req, res) => {
 // PUT - Actualizar boleto
 app.put('/boletos/:id', async (req, res) => {
     const { nombre, tipo, precio, stock } = req.body;
-    if (!nombre || !precio) {
-        return res.status(400).json({ error: 'Nombre y precio son obligatorios' });
+    
+    // Validación de presencia y tipo de datos
+    if (!nombre || precio === undefined || isNaN(Number(precio)) || (stock !== undefined && isNaN(Number(stock)))) {
+        return res.status(400).json({ error: 'Nombre, precio (numérico) y stock (numérico) son obligatorios o válidos' });
     }
     try {
         const result = await pool.query(
             'UPDATE boletos SET nombre = $1, tipo = $2, precio = $3, stock = $4 WHERE id = $5 RETURNING *',
-            [nombre, tipo || 'Integral', precio, stock || 100, req.params.id]
+            [nombre, tipo || 'Integral', Number(precio), stock !== undefined ? Number(stock) : 100, req.params.id]
         );
         if (result.rowCount === 0) {
             return res.status(404).json({ error: 'Boleto no encontrado' });
