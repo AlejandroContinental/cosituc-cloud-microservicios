@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [usuarios, boletos, reservas, garita]
+        service: [usuarios, boletos, reservas]
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
