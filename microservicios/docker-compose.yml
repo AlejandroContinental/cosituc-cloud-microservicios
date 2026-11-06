@@ -56,6 +56,40 @@ services:
     networks:
       - cosituc-net
 
+  garita-db:
+    image: postgres:15
+    container_name: cosituc-garita-db
+    environment:
+      - POSTGRES_USER=garita_user
+      - POSTGRES_PASSWORD=garita123
+      - POSTGRES_DB=garita_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./garita/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - cosituc-net
+
+  garita:
+    build: ./garita
+    container_name: cosituc-garita
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - DB_HOST=garita-db
+      - DB_PORT=5432
+      - DB_NAME=garita_db
+      - DB_USER=garita_user
+      - DB_PASSWORD=garita123
+      - RESERVAS_SERVICE_URL=http://reservas:3003
+    depends_on:
+      - garita-db
+      - reservas
+    networks:
+      - cosituc-net
+
 networks:
   cosituc-net:
     driver: bridge
