@@ -1,0 +1,42 @@
+name: CI Pipeline - Microservicios COSITUC
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Pruebas Unitarias - ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [usuarios, boletos, reservas]
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Instalar dependencias
+        working-directory: microservicios/${{ matrix.service }}
+        run: npm install
+
+      - name: Ejecutar pruebas unitarias
+        working-directory: microservicios/${{ matrix.service }}
+        run: npm test
+
+  docker-build:
+    name: Verificación de Construcción Docker
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Construir imágenes con Docker Compose
+        run: docker compose -f microservicios/docker-compose.yml build
