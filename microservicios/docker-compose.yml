@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # --- BASES DE DATOS ---
+  # --- BASES DE DATOS (Database per Service) ---
   usuarios-db:
     image: postgres:15
     container_name: cosituc-usuarios-db
@@ -53,6 +53,8 @@ services:
       - POSTGRES_DB=garita_db
     ports:
       - "5434:5432"
+    volumes:
+      - ./garita/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - cosituc-net
 
@@ -64,6 +66,7 @@ services:
       - "3001:3001"
     environment:
       - NODE_ENV=development
+      - PORT=3001
       - DB_HOST=usuarios-db
       - DB_PORT=5432
       - DB_NAME=usuarios_db
@@ -107,10 +110,33 @@ services:
       - DB_PASSWORD=reservas123
       - USUARIOS_SERVICE_URL=http://usuarios:3001
       - BOLETOS_SERVICE_URL=http://boletos:3002
+      - USUARIOS_API_URL=http://usuarios:3001
+      - BOLETOS_API_URL=http://boletos:3002
     depends_on:
       - usuarios
       - boletos
       - reservas-db
+    networks:
+      - cosituc-net
+
+  garita:
+    build: ./garita
+    container_name: cosituc-garita
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - DB_HOST=garita-db
+      - DB_PORT=5432
+      - DB_NAME=garita_db
+      - DB_USER=garita_user
+      - DB_PASSWORD=garita123
+      - RESERVAS_SERVICE_URL=http://reservas:3003
+      - RESERVAS_API_URL=http://reservas:3003
+    depends_on:
+      - garita-db
+      - reservas
     networks:
       - cosituc-net
 
