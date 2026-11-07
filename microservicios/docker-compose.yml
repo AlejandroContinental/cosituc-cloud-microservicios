@@ -1,13 +1,18 @@
 version: '3.8'
 
 services:
-  usuarios:
-    build: ./usuarios
-    container_name: cosituc-usuarios
-    ports:
-      - "3001:3001"
+  # --- BASES DE DATOS ---
+  usuarios-db:
+    image: postgres:15
+    container_name: cosituc-usuarios-db
     environment:
-      - NODE_ENV=development
+      - POSTGRES_USER=usuarios_user
+      - POSTGRES_PASSWORD=usuarios123
+      - POSTGRES_DB=usuarios_db
+    ports:
+      - "5431:5432"
+    volumes:
+      - ./usuarios/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - cosituc-net
 
@@ -20,6 +25,52 @@ services:
       - POSTGRES_DB=boletos_db
     ports:
       - "5432:5432"
+    volumes:
+      - ./boletos/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - cosituc-net
+
+  reservas-db:
+    image: postgres:15
+    container_name: cosituc-reservas-db
+    environment:
+      - POSTGRES_USER=reservas_user
+      - POSTGRES_PASSWORD=reservas123
+      - POSTGRES_DB=reservas_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./reservas/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - cosituc-net
+
+  garita-db:
+    image: postgres:15
+    container_name: cosituc-garita-db
+    environment:
+      - POSTGRES_USER=garita_user
+      - POSTGRES_PASSWORD=garita123
+      - POSTGRES_DB=garita_db
+    ports:
+      - "5434:5432"
+    networks:
+      - cosituc-net
+
+  # --- MICROSERVICIOS ---
+  usuarios:
+    build: ./usuarios
+    container_name: cosituc-usuarios
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=usuarios-db
+      - DB_PORT=5432
+      - DB_NAME=usuarios_db
+      - DB_USER=usuarios_user
+      - DB_PASSWORD=usuarios123
+    depends_on:
+      - usuarios-db
     networks:
       - cosituc-net
 
@@ -48,45 +99,18 @@ services:
       - "3003:3003"
     environment:
       - NODE_ENV=development
-      - USUARIOS_API_URL=http://usuarios:3001
-      - BOLETOS_API_URL=http://boletos:3002
+      - PORT=3003
+      - DB_HOST=reservas-db
+      - DB_PORT=5432
+      - DB_NAME=reservas_db
+      - DB_USER=reservas_user
+      - DB_PASSWORD=reservas123
+      - USUARIOS_SERVICE_URL=http://usuarios:3001
+      - BOLETOS_SERVICE_URL=http://boletos:3002
     depends_on:
       - usuarios
       - boletos
-    networks:
-      - cosituc-net
-
-  garita-db:
-    image: postgres:15
-    container_name: cosituc-garita-db
-    environment:
-      - POSTGRES_USER=garita_user
-      - POSTGRES_PASSWORD=garita123
-      - POSTGRES_DB=garita_db
-    ports:
-      - "5434:5432"
-    volumes:
-      - ./garita/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - cosituc-net
-
-  garita:
-    build: ./garita
-    container_name: cosituc-garita
-    ports:
-      - "3004:3004"
-    environment:
-      - NODE_ENV=development
-      - PORT=3004
-      - DB_HOST=garita-db
-      - DB_PORT=5432
-      - DB_NAME=garita_db
-      - DB_USER=garita_user
-      - DB_PASSWORD=garita123
-      - RESERVAS_SERVICE_URL=http://reservas:3003
-    depends_on:
-      - garita-db
-      - reservas
+      - reservas-db
     networks:
       - cosituc-net
 
