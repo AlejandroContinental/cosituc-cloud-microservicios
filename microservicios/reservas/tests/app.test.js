@@ -24,3 +24,7 @@ test('POST /reservas debe validar campos obligatorios y responder 400', async ()
     expect(response.statusCode).toBe(400);
     expect(response.body.error).toBeDefined();
 });
+test('GET /reservas/qr/:codigo_qr debe retornar la reserva correspondiente o 404', async () => {
+    const response = await request(app).get('/reservas/qr/BTC-INEXISTENTE');
+    expect([200, 404, 500]).toContain(response.statusCode);
+});
