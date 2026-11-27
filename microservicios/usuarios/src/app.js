@@ -9,10 +9,26 @@ app.get('/health', (req, res) => {
     res.json({ estado: 'ok', servicio: 'usuarios' });
 });
 
+// GET - Métricas y resumen de usuarios para observabilidad
+app.get('/usuarios/metricas/resumen', async (req, res) => {
+    try {
+        const totalResult = await pool.query('SELECT COUNT(*) as total FROM usuarios');
+        const rolesResult = await pool.query('SELECT rol, COUNT(*) as cantidad FROM usuarios GROUP BY rol');
+        res.json({
+            servicio: 'usuarios',
+            total_usuarios: parseInt(totalResult.rows[0].total, 10),
+            distribucion_roles: rolesResult.rows
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error al consultar resumen de usuarios' });
+    }
+});
+
 // GET - Consultar todos los usuarios
 app.get('/usuarios', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM usuarios');
+        const result = await pool.query('SELECT * FROM usuarios ORDER BY id ASC');
         res.json(result.rows);
     } catch (error) {
         console.error(error);
@@ -88,4 +104,3 @@ app.delete('/usuarios/:id', async (req, res) => {
 });
 
 module.exports = app;
-
