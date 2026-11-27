@@ -1,17 +1,23 @@
 const express = require('express');
 const crypto = require('crypto');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const pool = require('./db');
 
 const app = express();
 app.use(express.json());
 
-// Soporte unificado para nombres de variables de entorno (Docker Compose y Local)
+// Cliente AWS S3 para respaldo de comprobantes digitales de boletos
+const s3Client = new S3Client({
+    region: process.env.AWS_REGION || 'us-east-1'
+});
+
+// Soporte unificado para URLs de microservicios
 const USUARIOS_URL = process.env.USUARIOS_SERVICE_URL || process.env.USUARIOS_API_URL || 'http://localhost:3001';
 const BOLETOS_URL = process.env.BOLETOS_SERVICE_URL || process.env.BOLETOS_API_URL || 'http://localhost:3002';
 
 // Healthcheck
 app.get('/health', (req, res) => {
-    res.json({ estado: 'ok', servicio: 'reservas' });
+    res.json({ estado: 'ok', servicio: 'reservas', s3_backup: 'activo' });
 });
 
 // GET - Listar todas las reservas
@@ -54,7 +60,7 @@ app.get('/reservas/:id', async (req, res) => {
     }
 });
 
-// POST - Crear reserva
+// POST - Crear reserva y respaldar comprobante en Amazon S3
 app.post('/reservas', async (req, res) => {
     const { usuario_id, boleto_id, fecha_visita, cantidad } = req.body;
 
@@ -81,7 +87,7 @@ app.post('/reservas', async (req, res) => {
             return res.status(409).json({ error: `Aforo insuficiente. Cupos disponibles: ${stockDisponible}` });
         }
 
-        // 3. Registrar reserva
+        // 3. Registrar reserva en PostgreSQL
         const reservaId = crypto.randomUUID();
         const totalPagado = Number(boletoData.precio) * cantidad;
         const codigoQr = `BTC-${reservaId.slice(0, 8).toUpperCase()}`;
@@ -95,7 +101,40 @@ app.post('/reservas', async (req, res) => {
             reservaId, usuario_id, boleto_id, fecha_visita, cantidad, totalPagado, codigoQr
         ]);
 
-        res.status(201).json(result.rows[0]);
+        const reservaCreada = result.rows[0];
+
+        // 4. Integración Amazon S3: Respaldo inmutable de comprobante digital
+        const bucketName = process.env.S3_BUCKET_NAME;
+        if (bucketName) {
+            const fechaActual = new Date();
+            const year = fechaActual.getFullYear();
+            const month = String(fechaActual.getMonth() + 1).padStart(2, '0');
+            const s3Key = `reservas/año=${year}/mes=${month}/reserva-${reservaId}.json`;
+
+            const s3Payload = {
+                reserva_id: reservaId,
+                codigo_qr: codigoQr,
+                usuario_id,
+                boleto_id,
+                nombre_circuito: boletoData.nombre || 'Boleto Turistico Cusco',
+                fecha_visita,
+                cantidad,
+                total_pagado: totalPagado,
+                emitido_en: fechaActual.toISOString(),
+                origen: 'cosituc-cloud-reservas'
+            };
+
+            s3Client.send(new PutObjectCommand({
+                Bucket: bucketName,
+                Key: s3Key,
+                Body: JSON.stringify(s3Payload, null, 2),
+                ContentType: 'application/json'
+            })).catch(s3Err => {
+                console.error('Advertencia S3: No se pudo respaldar el comprobante en Amazon S3:', s3Err.message);
+            });
+        }
+
+        res.status(201).json(reservaCreada);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Error interno al procesar la reserva', detalle: error.message });
