@@ -9,10 +9,39 @@ app.get('/health', (req, res) => {
     res.json({ estado: 'ok', servicio: 'boletos' });
 });
 
+// GET - Reporte de disponibilidad de boletos y aforo remanente
+app.get('/boletos/reportes/disponibilidad', async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT 
+                id, 
+                nombre, 
+                tipo, 
+                precio, 
+                stock, 
+                CASE 
+                    WHEN stock <= 10 THEN 'CRITICO'
+                    WHEN stock <= 30 THEN 'MEDIO'
+                    ELSE 'OPTIMO'
+                END as estado_aforo
+             FROM boletos 
+             ORDER BY stock ASC`
+        );
+        res.json({
+            fecha: new Date().toISOString(),
+            total_circuitos: result.rowCount,
+            circuitos: result.rows
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error al consultar disponibilidad de boletos' });
+    }
+});
+
 // GET - Listar todos los boletos
 app.get('/boletos', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM boletos');
+        const result = await pool.query('SELECT * FROM boletos ORDER BY id ASC');
         res.json(result.rows);
     } catch (error) {
         console.error(error);
@@ -38,7 +67,6 @@ app.get('/boletos/:id', async (req, res) => {
 app.post('/boletos', async (req, res) => {
     const { nombre, tipo, precio, stock } = req.body;
     
-    // Validación de presencia y tipo de datos
     if (!nombre || precio === undefined || isNaN(Number(precio)) || (stock !== undefined && isNaN(Number(stock)))) {
         return res.status(400).json({ error: 'Nombre, precio (numérico) y stock (numérico) son obligatorios o válidos' });
     }
@@ -58,7 +86,6 @@ app.post('/boletos', async (req, res) => {
 app.put('/boletos/:id', async (req, res) => {
     const { nombre, tipo, precio, stock } = req.body;
     
-    // Validación de presencia y tipo de datos
     if (!nombre || precio === undefined || isNaN(Number(precio)) || (stock !== undefined && isNaN(Number(stock)))) {
         return res.status(400).json({ error: 'Nombre, precio (numérico) y stock (numérico) son obligatorios o válidos' });
     }
